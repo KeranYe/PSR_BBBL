@@ -1,17 +1,9 @@
-extern "C"
-{
-#include "rc_usefulincludes.h"
+include "rc_usefulincludes.h"
 }
 extern "C"
 {  
 #include "roboticscape.h"
 }
-/*
-extern "C"
-{
-#include "rc_motors.h"
-}
-*/
 
 //#include "balance_config.h"
 #include "ros/ros.h"
@@ -20,24 +12,39 @@ extern "C"
 #include "unistd.h"
 
 // Define Globle Variables
-// Define velocity
-//float linear_premap = 0;
-//float angular_premap = 0;
-float x_max = 1;
-float z_max = 1;
+float V1_max = 3.5;
+float V2_max = 3.5;
+float V3_max = 3.5; 
+float V1 = 0; 
+float V2 = 0; 
+float V3 = 0;
 
 // Define duty cycle for dual motors
-unsigned int LeftChannel = 1;
-unsigned int RightChannel  = 4;
-float LeftDuty = 0;
-float RightDuty = 0;
 
-/*
-float median_duty = 0;
-float differential_duty = 0;
-float median_duty_max = 0.6;
-float diff_duty_max = 0.4;
-*/
+//motors
+unsigned int Motor1Channel = 1;
+unsigned int Motor2Channel = 2;
+unsigned int Motor3Channel = 3;
+float gearbox = 51.45;
+int encoder_res=12;
+
+//PID
+float kp_M1 = 10;
+float ki_M1 = 0;
+float kd_M1 = 15; 
+
+float kp_M2 = 10;
+float ki_M2 = 0;
+float kd_M2 = 15;
+  
+float kp_M3 = 10;
+float ki_M3 = 0;
+float kd_M3 = 15;
+
+//duty cycle
+float M1_Duty = 0;
+float M2_Duty = 0;
+float M3_Duty = 0; 
 
 void chatterCallback(const std_msgs::String::ConstPtr& msg)
 {
@@ -47,55 +54,40 @@ void chatterCallback(const std_msgs::String::ConstPtr& msg)
 void drive_Callback(const geometry_msgs::Twist::ConstPtr& cmd_vel_twist)
 {
 
-  // assign the commands if the array is of the correct length
-  LeftDuty = cmd_vel_twist->linear.x;
-  RightDuty  = cmd_vel_twist->angular.z;
+// assign the commands if the array is of the correct length
 
-//  time_last_good_ros_command_sec = ros::Time::now().toSec();
-  ROS_INFO("Left Duty, Right Duty= %1.2f %1.2f %1.2f" , LeftDuty, RightDuty);
-//  return;
 
-// Map from linear_premap & angular_premap to LeftDuty & RightDuty
-// 1. Limit Duty Cycle to [0, x_max];
-   if( LeftDuty > x_max ){
-   	LeftDuty = 0;
-	ROS_INFO("LeftDuty upper bound excessed!");
-   }
-   if( RightDuty > x_max ){
-        RightDuty = 0;
-	ROS_INFO("RightDuty lower bound excessed!");
-   }
+//formulas for velocity 
+  float Vx =0;
+  float Vy =0; 
+  float Wz=0;
+  float L= 0.5;
+  Vx= cmd_vel_twist -> linear.x;
+  Vy= cmd_vel_twist -> linear.y;
+  Wz = cmd_vel_twist -> angular.z;
 
-/*
-// 2. Map linear_premap to median_duty in the range of [0, median_duty_max];
-   median_duty = median_duty_max * linear_premap / x_max;
- 
-// 3. limit angular_prremap to [-z_max, z_max];
-   if( angular_premap > z_max ){
-        angular_premap = z_max;
-        ROS_INFO("Angular velocity upper bound excessed!");
+
+//------------kinematics ----------
+
+
+  V1= -(Vx)/2 - (sqrt(3)*Vy)/2 + L*Wz;
+  V2= Vx + L*Wz;
+  V3= -(Vx)/2+sqrt(3)*Vy/2+ L*Wz;
+
+   if( M1_Duty > V1_max ){
+   	M1_Duty = 0;
+	ROS_INFO("Motor 1 upper bound excessed!");
    }
-   if( angular_premap < (-1.0)*z_max ){
-        angular_premap = (-1.0)*z_max;
-        ROS_INFO("Angular velocity lower bound excessed!");
+   if( M2_Duty > V2_max ){
+        M2_Duty = 0;
+	ROS_INFO("Motor 2 upper bound excessed!");
    }
 
-// 4. Map angular_premap to differential_duty in range of [-diff_duty_max, diff_duty_max];
-   differential_duty = 2.0 * diff_duty_max * (angular_premap + z_max) / (2.0 * z_max) - diff_duty_max;
-// 5. Map LeftDuty = median_duty + differential_duty & RightDuty = median_duty - differential_duty
-   LeftDuty = median_duty + differential_duty;
-   RightDuty = median_duty - differential_duty;
-//   rc_set_motor(LeftChannel, LeftDuty);
-//   rc_set_motor(RightChannel, RightDuty);
-*/
-//   ROS_INFO("Left Duty = %1.2f , Right Duty = %1.2f" , LeftDuty, RightDuty);
-/*
-//  Test Motors
-   rc_set_state(RUNNING);
-   rc_set_motor(1, 0.2);
-   rc_set_motor(4, 0.2);  
-   return;
-*/
+  if( M3_Duty > V3_max ){
+        M3_Duty = 0;
+	ROS_INFO("Motor 3 upper bound excessed!");
+   }
+
 }
 
 void ros_compatible_shutdown_signal_handler(int signo)
@@ -114,14 +106,62 @@ void ros_compatible_shutdown_signal_handler(int signo)
     }
 }
 
+float PID_wheel(float error, float kp, float ki, float kd, float integral, float derivative)
+{
+
+    // Proportional term
+    float Pout = kp * error;
+
+    // Integral term
+    float Iout = ki * integral;
+
+    // Derivative term
+    float Dout = kd * derivative;
+
+    // Calculate total output
+    float output = Pout + Iout + Dout;
+
+    // Restrict to max/min
+    if( output > 1 )
+        output = 1;
+    else if( output < -1 )
+        output = -1;
+
+return output;
+}
+
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "psr_drive");
+  float WheelD1=0;
+  float WheelD2=0;
+  float WheelD3=0;
+
+  float error1=0;
+  float error2=0;
+  float error3=0;
+
+  float integral1=0;
+  float integral2=0;
+  float integral3=0;
+	
+  float derivative1=0;
+  float derivative2=0;
+  float derivative3=0;
+
+  float errorp1=0;
+  float errorp2=0;
+  float errorp3=0;
+
+  float M1_Duty_p=0;
+  float M2_Duty_p=0;
+  float M3_Duty_p=0;
+	
+  ros::init(argc, argv, "omni_drive");
 
   ros::NodeHandle n;
 
-  ros::Subscriber sub = n.subscribe("/turtlebot_teleop/cmd_vel", 1, drive_Callback);
+  ros::Subscriber sub = n.subscribe("/turtlebot_teleop/cmd_vel", 10, drive_Callback);
 
   if(rc_initialize()<0)
     {
@@ -137,13 +177,66 @@ int main(int argc, char **argv)
 
 //  initialize_motors();
   rc_enable_motors();
-  ros::Rate r(100);  //100 hz
+  ros::Rate r(500);  //500 hz
   while(ros::ok()){
 	//rc_enable_motors();
-	rc_set_motor(LeftChannel, LeftDuty);
-	rc_set_motor(RightChannel, RightDuty);
+	for (int i = 0; i < 25; ++i){
+
+	WheelD1 = (rc_get_encoder_pos(Motor1Channel) * TWO_PI)/(1 * gearbox * encoder_res)*0.06;
+	WheelD2 = (rc_get_encoder_pos(Motor2Channel) * TWO_PI)/(1 * gearbox * encoder_res)*0.06;
+	WheelD3 = (rc_get_encoder_pos(Motor3Channel) * TWO_PI)/(1 * gearbox * encoder_res)*0.06;
+	
+	error1=V1*0.05-WheelD1;
+	error2=V2*0.05-WheelD2;
+	error3=V3*0.05-WheelD3;
+	
+	integral1 = integral1 + error1;
+	integral2 = integral2 + error2;
+	integral2 = integral3 + error3;
+	
+	derivative1=error1-errorp1;
+	derivative2=error2-errorp2;
+	derivative3=error3-errorp3;
+
+	M1_Duty=-1*PID_wheel(error1, kp_M1, ki_M1, kd_M1, integral1, derivative1);
+	M2_Duty=-1*PID_wheel(error2, kp_M2, ki_M2, kd_M2, integral2, derivative2);
+	M3_Duty=-1*PID_wheel(error3, kp_M3, ki_M3, kd_M3, integral3, derivative3);
+
+	// soft start part
+	if(M1_Duty-M1_Duty_p>0.3)
+	  M1_Duty = M1_Duty_p+0.3;
+	else if( M1_Duty-M1_Duty_p<-0.3 )
+	  M1_Duty = M1_Duty_p-0.3;
+
+	if(M2_Duty-M2_Duty_p>0.3)
+	  M2_Duty = M2_Duty_p+0.3;
+	else if( M2_Duty-M2_Duty_p<-0.3 )
+	  M2_Duty = M2_Duty_p-0.3;
+
+	if(M3_Duty-M3_Duty_p>0.3)
+	  M3_Duty = M3_Duty_p+0.3;
+	else if( M2_Duty-M2_Duty_p<-0.3 )
+	  M3_Duty = M3_Duty_p-0.3;
+
+	M1_Duty_p=M1_Duty;
+	M2_Duty_p=M2_Duty;
+	M3_Duty_p=M3_Duty;
+
+	rc_set_motor(Motor1Channel, M1_Duty);
+	rc_set_motor(Motor2Channel, M2_Duty);
+	rc_set_motor(Motor3Channel, M3_Duty);
+	//double secs =ros::Time::now().toSec();
+	//ROS_INFO("time= %0.8f ", secs);
 	ros::spinOnce();
 	r.sleep();
+	}
+	ROS_INFO("Vf1, Vf2, Vf3= %0.6f %0.6f %0.6f", WheelD1/0.05, WheelD2/0.05, WheelD3/0.05);
+	ROS_INFO("D1, D2, D3= %1.2f %1.2f %1.2f", M1_Duty, M2_Duty, M3_Duty);
+	
+	rc_set_encoder_pos(Motor1Channel,0);
+  	rc_set_encoder_pos(Motor2Channel,0);
+	rc_set_encoder_pos(Motor3Channel,0);
+
 //	rc_usleep(10000);
 
 }
@@ -154,7 +247,11 @@ int main(int argc, char **argv)
    * will exit when Ctrl-C is pressed, or the node is shutdown by the master.
    */
 //  ros::spin();
-
   return 0;
+
+  rc_set_motor(Motor1Channel,0);
+  rc_set_motor(Motor2Channel,0);
+  rc_set_motor(Motor3Channel,0);
+
 }
 
