@@ -11,24 +11,31 @@ extern "C"
 #include "geometry_msgs/Twist.h"
 #include "unistd.h"
 
+//-----------------------------
 // Define Globle Variables
-float V1_max = 3.5;
-float V2_max = 3.5;
-float V3_max = 3.5; 
-float V1 = 0; 
-float V2 = 0; 
-float V3 = 0;
+//-----------------------------
+// State limitation
+float vel_left_max = 3.5;
+float vel_right_max = 3.5;
+
+// States 
+float pos_left = 0; 
+float pos_right = 0; 
+
+float vel_left = 0; 
+float vel_right = 0; 
+
 
 // Define duty cycle for dual motors
 
 //motors
-unsigned int Motor1Channel = 1;
-unsigned int Motor2Channel = 2;
-unsigned int Motor3Channel = 3;
-float gearbox = 51.45;
-int encoder_res=12;
+unsigned int Channel_Left = 1;
+unsigned int Channel_Right = 4;
+//unsigned int Motor3Channel = 3;
+float gearbox = 298.0;
+int encoder_res = 12;
 
-//PID
+//PID Coeffients
 float kp_M1 = 10;
 float ki_M1 = 0;
 float kd_M1 = 15; 
@@ -182,8 +189,8 @@ int main(int argc, char **argv)
 	//rc_enable_motors();
 	for (int i = 0; i < 25; ++i){
 
-	WheelD1 = (rc_get_encoder_pos(Motor1Channel) * TWO_PI)/(1 * gearbox * encoder_res)*0.06;
-	WheelD2 = (rc_get_encoder_pos(Motor2Channel) * TWO_PI)/(1 * gearbox * encoder_res)*0.06;
+	WheelD1 = (rc_get_encoder_pos(Channel_Left) * TWO_PI)/(1 * gearbox * encoder_res)*0.06;
+	WheelD2 = (rc_get_encoder_pos(Channel_Right) * TWO_PI)/(1 * gearbox * encoder_res)*0.06;
 	WheelD3 = (rc_get_encoder_pos(Motor3Channel) * TWO_PI)/(1 * gearbox * encoder_res)*0.06;
 	
 	error1=V1*0.05-WheelD1;
@@ -222,8 +229,8 @@ int main(int argc, char **argv)
 	M2_Duty_p=M2_Duty;
 	M3_Duty_p=M3_Duty;
 
-	rc_set_motor(Motor1Channel, M1_Duty);
-	rc_set_motor(Motor2Channel, M2_Duty);
+	rc_set_motor(Channel_Left, M1_Duty);
+	rc_set_motor(Channel_Right, M2_Duty);
 	rc_set_motor(Motor3Channel, M3_Duty);
 	//double secs =ros::Time::now().toSec();
 	//ROS_INFO("time= %0.8f ", secs);
@@ -233,8 +240,8 @@ int main(int argc, char **argv)
 	ROS_INFO("Vf1, Vf2, Vf3= %0.6f %0.6f %0.6f", WheelD1/0.05, WheelD2/0.05, WheelD3/0.05);
 	ROS_INFO("D1, D2, D3= %1.2f %1.2f %1.2f", M1_Duty, M2_Duty, M3_Duty);
 	
-	rc_set_encoder_pos(Motor1Channel,0);
-  	rc_set_encoder_pos(Motor2Channel,0);
+	rc_set_encoder_pos(Channel_Left,0);
+  	rc_set_encoder_pos(Channel_Right,0);
 	rc_set_encoder_pos(Motor3Channel,0);
 
 //	rc_usleep(10000);
@@ -249,8 +256,8 @@ int main(int argc, char **argv)
 //  ros::spin();
   return 0;
 
-  rc_set_motor(Motor1Channel,0);
-  rc_set_motor(Motor2Channel,0);
+  rc_set_motor(Channel_Left,0);
+  rc_set_motor(Channel_Right,0);
   rc_set_motor(Motor3Channel,0);
 
 }
