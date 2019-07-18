@@ -88,7 +88,7 @@ void drive_Callback(const geometry_msgs::Twist::ConstPtr& cmd_vel_twist)
   	pos_left_des = cmd_vel_twist -> linear.x;
   	pos_right_des = cmd_vel_twist -> linear.y;
 	vel_left_des = cmd_vel_twist -> angular.x;
-  	vel_right_des = cmd_vel_twist -> angular.y
+  	vel_right_des = cmd_vel_twist -> angular.y;
 
 }
 
@@ -117,13 +117,15 @@ void ros_compatible_shutdown_signal_handler(int signo)
 float PID_duty(float error, float integral, float derivative)
 {
 	// This PID aims to achieve position control.
-	float duty = kp * error + ki * integral + kd * derivative
+	float duty = kp * error + ki * integral + kd * derivative; 
 
 	// Limit check
 	if( duty > 1 )
 		duty = 1;
 	else if( duty < -1 )
 		duty = -1;
+	else
+		return duty
 
 	return duty;
 }
@@ -184,7 +186,7 @@ int main(int argc, char **argv)
 				tick_left_0 = rc_get_encoder_pos(Channel_Left);
 				tick_left_sum += tick_left_0;}
 			else
-				tick_left_sum += rc_get_encoder_pos(Channel_Left)
+				tick_left_sum += rc_get_encoder_pos(Channel_Left);
 			
 			// Reset encoder if necessary		
 			if(i == (num_sample-1) && rc_get_encoder_pos(Channel_Left) > total_tick)
