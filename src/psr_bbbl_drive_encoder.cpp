@@ -125,7 +125,7 @@ float PID_duty(float error, float integral, float derivative)
 	else if( duty < -1 )
 		duty = -1;
 	else
-		return duty
+		return duty;
 
 	return duty;
 }
