@@ -1,3 +1,4 @@
+extern "C"
 {
 #include "rc_usefulincludes.h"
 }
