@@ -98,7 +98,8 @@ void ros_compatible_shutdown_signal_handler(int signo)
 	if (signo == SIGINT)
 	{
 		rc_set_motor(Channel_Left,0);
-  		rc_set_motor(Channel_Right,0);		
+  		rc_set_motor(Channel_Right,0);
+		rc_disable_motors();		
 		rc_set_state(EXITING);
 		ROS_INFO("\nReceived SIGINT Ctrl-C.");
 		ros::shutdown();
@@ -106,7 +107,8 @@ void ros_compatible_shutdown_signal_handler(int signo)
 	else if (signo == SIGTERM)
 	{
 		rc_set_motor(Channel_Left,0);
-  		rc_set_motor(Channel_Right,0);		
+  		rc_set_motor(Channel_Right,0);
+		rc_disable_motors();		
 		rc_set_state(EXITING);
 		ROS_INFO("Received SIGTERM.");
 		ros::shutdown();
@@ -183,14 +185,14 @@ int main(int argc, char **argv)
 		for (int i = 0; i < num_sample; ++i){
 			// 2.1.1 Get position
 			if(i == 0){
-				tick_left_0 = rc_get_encoder_pos(Channel_Left);
+				tick_left_0 = (-1)*rc_get_encoder_pos(Channel_Left);
 				tick_left_sum += tick_left_0;}
 			else
-				tick_left_sum += rc_get_encoder_pos(Channel_Left);
+				tick_left_sum += (-1)*rc_get_encoder_pos(Channel_Left);
 			
 			// Reset encoder if necessary		
-			if(i == (num_sample-1) && rc_get_encoder_pos(Channel_Left) > total_tick)
-				rc_set_encoder_pos(Channel_Left, rc_get_encoder_pos(Channel_Left)-total_tick);
+			if(i == (num_sample-1) && (-1)*rc_get_encoder_pos(Channel_Left) > total_tick)
+				rc_set_encoder_pos(Channel_Left, (-1)*rc_get_encoder_pos(Channel_Left)-total_tick);
 		
 			ros::spinOnce();
 			r.sleep();
