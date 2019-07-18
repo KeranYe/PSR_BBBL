@@ -280,8 +280,17 @@ int main(int argc, char **argv)
 		
 		// 2.3 PID controller for duty
 		error_left = pos_left_des - pos_left;
+		if(error_left > PI)
+			error_left = error_left - TWO_PI;
+		else if(error_left < ((-1)*PI))
+			error_left = error_left + TWO_PI;
+		else
+			error_left = error_left;
+		
 		derivative_left = vel_left_des - vel_left;
+		
 		integral_left = 0.0;
+		
 		duty_left = motor_left_dir*PID_duty(error_left, integral_left, derivative_left);
 
 		// Soft start
