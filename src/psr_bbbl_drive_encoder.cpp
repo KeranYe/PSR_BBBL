@@ -56,15 +56,23 @@ int total_tick = (int)(gear_ratio * encoder_res);
 // Motor duty cycle
 float duty_left = 0;
 float duty_right = 0; 
+float duty_soft = 0;
+
+// Motor direction
+float motor_left_dir = -1.0;
+float motor_right_dir = 1.0;
+
+// Sampling
+int num_sample = 10;
 
 //-----------------------------
 // Define Controller Parameters
 //-----------------------------
 
 //PID Coeffients
-float kp = 10;
+float kp = 1;
 float ki = 0;
-float kd = 15; 
+float kd = 0; 
 
 
 //-----------------------------
@@ -139,6 +147,43 @@ int main(int argc, char **argv)
 	// 1. Initialzation
 	//------------------	
 
+	// 1.1 Input from command line
+	
+	// PID parameters
+	while(1){	
+		char yes_or_no = 'n';		
+		cout << "Please enter kp (float): ";
+		cin >> kp;
+		cout << "Please enter ki (float): ";
+		cin >> ki;
+		cout << "Please enter kd (float): ";
+		cin >> kd;
+		cout << "Correct input for kp = " << kp << " and ki = " << ki << " and kd = " << kd << "?(y/n)";
+		cin >> yes_or_no;		
+		if(yes_or_no == 'y') break;
+	}
+	
+	// Motor properties
+	while(1){
+		cout << "Please enter left motor direction (1 or -1, float): ";
+		cin >> motor_left_dir;
+		cout << "Please enter right motor direction (1 or -1, float): ";
+		cin >> motor_right_dir;
+		cout << "Please enter soft portion for duty cycle ((0,0.3], float): ";
+		cin >> duty_soft;
+		cout << "Please enter sampling number (int): ";
+		cin >> num_sample;
+		
+		cout << "Correct input for"; 
+		cout << "motor_left_dir = " << motor_left_dir;
+		cout << "motor_right_dir = " << motor_right_dir;
+		cout << "duty_soft = " << duty_soft;
+		cout << "num_sample = " << num_sample << "?(y/n)";
+		cin >> yes_or_no;		
+		if(yes_or_no == 'y') break;
+	}
+
+	// 1.2 Temp states
 	float error_left = 0;
 	float error_right = 0;
 
@@ -183,7 +228,7 @@ int main(int argc, char **argv)
 	rc_enable_motors();
 	ros::Rate r(500);  //500 hz
 	// Assume initial pos for encoder has been set by funtion rc_test_encoders
-	int num_sample = 10; 
+	//int num_sample = 10; 
 	while(ros::ok()){
 		// 2.1 Compute average position and velocity in 5 samples
 		int tick_left_sum = 0;
@@ -231,13 +276,13 @@ int main(int argc, char **argv)
 		error_left = pos_left_des - pos_left;
 		derivative_left = vel_left_des - vel_left;
 		integral_left = 0.0;
-		duty_left = (-1)*PID_duty(error_left, integral_left, derivative_left);
+		duty_left = motor_left_dir*PID_duty(error_left, integral_left, derivative_left);
 
 		// Soft start
-		if((duty_left - duty_left_prior) > 0.3)
-	  		duty_left = duty_left_prior + 0.3;
-		else if((duty_left - duty_left_prior) < -0.3 )
-	  		duty_left = duty_left_prior-0.3;
+		if((duty_left - duty_left_prior) > duty_soft)
+	  		duty_left = duty_left_prior + duty_soft;
+		else if((duty_left - duty_left_prior) < - duty_soft )
+	  		duty_left = duty_left_prior - duty_soft;
 	
 		duty_left_prior = duty_left;
 	
