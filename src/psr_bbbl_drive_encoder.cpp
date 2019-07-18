@@ -150,6 +150,12 @@ int main(int argc, char **argv)
 
 	float error_left_prior = 0;
 	float error_right_prior = 0;
+	
+	float pos_left_prior = 0;
+	float pos_right_prior = 0;
+
+	float pos_left_diff = 0;
+	float pos_right_diff = 0;
 
 	float duty_left_prior = 0;
 	float duty_right_prior = 0;
@@ -177,7 +183,7 @@ int main(int argc, char **argv)
 	rc_enable_motors();
 	ros::Rate r(500);  //500 hz
 	// Assume initial pos for encoder has been set by funtion rc_test_encoders
-	int num_sample = 5; 
+	int num_sample = 10; 
 	while(ros::ok()){
 		// 2.1 Compute average position and velocity in 5 samples
 		int tick_left_sum = 0;
@@ -205,19 +211,27 @@ int main(int argc, char **argv)
 		int tick_left_diff = tick_left_sum - tick_left_0;
 	
 		pos_left = ((float)tick_left_average * TWO_PI) / ((float)total_tick);
-		vel_left = ((float)tick_left_diff * TWO_PI) / (((float)total_tick) * (0.002*(float)(num_sample-1)));
+		pos_left_diff = pos_left - pos_left_prior;
+		if(pos_left_diff < ((-1)*PI))
+			pos_left_diff += TWO_PI;
+		else if(pos_left_diff > PI)
+			pos_left_diff -= TWO_PI;		
+		else
+			pos_left_diff = pos_left_diff;
+		vel_left = pos_left_diff / (0.002*(float)num_sample);
+		//vel_left = ((float)tick_left_diff * TWO_PI) / (((float)total_tick) * (0.002*(float)(num_sample-1)));
 	
 		// Publish position and velocity
 		//ROS_INFO("pos_left = %0.6f", pos_left * 360 / TWO_PI);
 		ROS_INFO("vel_left = %0.6f", vel_left * 360 / TWO_PI);
 		//ROS_INFO("pos_left = %0.6f, pos_right = %0.6f", pos_left * 360 / TWO_PI, pos_right * 360 / TWO_PI);
 		
-		/*
+		
 		// 2.3 PID controller for duty
 		error_left = pos_left_des - pos_left;
 		derivative_left = vel_left_des - vel_left;
 		integral_left = 0.0;
-		duty_left = PID_duty(error_left, integral_left, derivative_left);
+		duty_left = (-1)*PID_duty(error_left, integral_left, derivative_left);
 
 		// Soft start
 		if((duty_left - duty_left_prior) > 0.3)
@@ -233,7 +247,9 @@ int main(int argc, char **argv)
 		// Publish duty
 		ROS_INFO("duty_left = %0.2f", duty_left);
 		//ROS_INFO("duty_left = %0.2f, duty_right = %0.2f", duty_left, duty_right);
-		*/
+		
+		pos_left_prior = pos_left;
+		//rc_set_motor(Channel_Left, (-1)*(0.3));// Velocity Test
 	}
 
   /**
