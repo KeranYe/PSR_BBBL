@@ -12,10 +12,15 @@ extern "C"
 #include "std_msgs/String.h"
 #include "geometry_msgs/Twist.h"
 #include "unistd.h"
+#include <iostream>
+using namespace std;
 
 //-----------------------------
 //------ Global Variables------
 //-----------------------------
+
+// Flag for general purpose
+char yes_or_no = 'n';
 
 //-----------------------------
 // Define States: 
@@ -151,7 +156,7 @@ int main(int argc, char **argv)
 	
 	// PID parameters
 	while(1){	
-		char yes_or_no = 'n';		
+		yes_or_no = 'n';		
 		cout << "Please enter kp (float): ";
 		cin >> kp;
 		cout << "Please enter ki (float): ";
@@ -165,6 +170,7 @@ int main(int argc, char **argv)
 	
 	// Motor properties
 	while(1){
+		yes_or_no = 'n';
 		cout << "Please enter left motor direction (1 or -1, float): ";
 		cin >> motor_left_dir;
 		cout << "Please enter right motor direction (1 or -1, float): ";
@@ -268,7 +274,7 @@ int main(int argc, char **argv)
 	
 		// Publish position and velocity
 		//ROS_INFO("pos_left = %0.6f", pos_left * 360 / TWO_PI);
-		ROS_INFO("vel_left = %0.6f", vel_left * 360 / TWO_PI);
+		ROS_INFO("pos_left = %0.6f, vel_left = %0.6f", pos_left * 360 / TWO_PI, vel_left * 360 / TWO_PI);
 		//ROS_INFO("pos_left = %0.6f, pos_right = %0.6f", pos_left * 360 / TWO_PI, pos_right * 360 / TWO_PI);
 		
 		
@@ -290,7 +296,7 @@ int main(int argc, char **argv)
 		rc_set_motor(Channel_Left, duty_left);
 
 		// Publish duty
-		ROS_INFO("duty_left = %0.2f", duty_left);
+		//ROS_INFO("duty_left = %0.2f", duty_left);
 		//ROS_INFO("duty_left = %0.2f, duty_right = %0.2f", duty_left, duty_right);
 		
 		pos_left_prior = pos_left;
