@@ -200,13 +200,16 @@ int main(int argc, char **argv)
 
 		// 2.2 Compute average position and speed
 		int tick_left_average = tick_left_sum / num_sample % total_tick;
+		if(tick_left_average < 0)
+			tick_left_average += total_tick;
 		int tick_left_diff = tick_left_sum - tick_left_0;
 	
 		pos_left = ((float)tick_left_average * TWO_PI) / ((float)total_tick);
 		vel_left = ((float)tick_left_diff * TWO_PI) / (((float)total_tick) * (0.002*(float)(num_sample-1)));
 	
 		// Publish position and velocity
-		ROS_INFO("pos_left = %0.6f", pos_left * 360 / TWO_PI);
+		//ROS_INFO("pos_left = %0.6f", pos_left * 360 / TWO_PI);
+		ROS_INFO("vel_left = %0.6f", vel_left * 360 / TWO_PI);
 		//ROS_INFO("pos_left = %0.6f, pos_right = %0.6f", pos_left * 360 / TWO_PI, pos_right * 360 / TWO_PI);
 		
 		/*
