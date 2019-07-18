@@ -1,4 +1,4 @@
-include "rc_usefulincludes.h"
+#include "rc_usefulincludes.h"
 }
 extern "C"
 {  
@@ -24,7 +24,7 @@ extern "C"
 float vel_left_max = 3.5;
 float vel_right_max = 3.5;
 
-// Real states 
+// Real states: [0, 2*pi)
 float pos_left = 0; 
 float pos_right = 0; 
 
@@ -47,8 +47,9 @@ unsigned int Channel_Left = 1;
 unsigned int Channel_Right = 4;
 
 // Moter mechanical property
-float gear_ratio = 298.0;
+float gear_ratio = 297.9;
 float encoder_res = 12.0;
+int total_tick = (int)(gear_ratio * encoder_res);
 
 // Motor duty cycle
 float duty_left = 0;
@@ -122,33 +123,30 @@ float PID_duty(float error, float integral, float derivative)
 	else if( duty < -1 )
 		duty = -1;
 
-	return output;
+	return duty;
 }
 
 
 int main(int argc, char **argv)
 {
-	// 1. Initialzation	
-	float WheelD1=0;
-	float WheelD2=0;
-	float WheelD3=0;
+	//------------------	
+	// 1. Initialzation
+	//------------------	
 
 	float error_left = 0;
-	float error_right=0;
+	float error_right = 0;
 
-	float integral_left=0;
-	float integral_right=0;
+	float integral_left = 0;
+	float integral_right = 0;
 	
-	float derivative_left=0;
-	float derivative_right=0;
+	float derivative_left = 0;
+	float derivative_right = 0;
 
-	float errorp1=0;
-	float errorp2=0;
-	float errorp3=0;
+	float error_left_prior = 0;
+	float error_right_prior = 0;
 
-	float duty_left_p=0;
-	float duty_right_p=0;
-	float M3_Duty_p=0;
+	float duty_left_prior = 0;
+	float duty_right_prior = 0;
 	
 	ros::init(argc, argv, "psr_drive");
 
@@ -163,76 +161,71 @@ int main(int argc, char **argv)
 	}
 
 	signal(SIGINT,  ros_compatible_shutdown_signal_handler);	
-	signal(SIGTERM, ros_compatible_shutdown_signal_handler);	
+	signal(SIGTERM, ros_compatible_shutdown_signal_handler);
 
-// rc_set_motor function test
-//  rc_set_state(RUNNING);
 
-//  initialize_motors();
+	//------------------	
+	// 2. Algorithm
+	//------------------
+
 	rc_enable_motors();
-	ros::Rate r(100);  //100 hz
+	ros::Rate r(500);  //500 hz
+	// Assume initial pos for encoder has been set by funtion rc_test_encoders
+	int num_sample = 5; 
 	while(ros::ok()){
-		//rc_enable_motors();
-		for (int i = 0; i < 25; ++i){
+		// 2.1 Compute average position and velocity in 5 samples
+		int tick_left_sum = 0;
+		int tick_left_0 = 0;
+		for (int i = 0; i < num_sample; ++i){
+			// 2.1.1 Get position
+			if(i == 0){
+				tick_left_0 = rc_get_encoder_pos(Channel_Left);
+				tick_left_sum += tick_left_0;}
+			else
+				tick_left_sum += rc_get_encoder_pos(Channel_Left)
+			
+			// Reset encoder if necessary		
+			if(i == (num_sample-1) && rc_get_encoder_pos(Channel_Left) > total_tick)
+				rc_set_encoder_pos(Channel_Left, rc_get_encoder_pos(Channel_Left)-total_tick);
+		
+			ros::spinOnce();
+			r.sleep();
+		}
 
-		WheelD1 = (rc_get_encoder_pos(Channel_Left) * TWO_PI)/(1 * gear_ratio * encoder_res)*0.06;
-		WheelD2 = (rc_get_encoder_pos(Channel_Right) * TWO_PI)/(1 * gear_ratio * encoder_res)*0.06;
-		WheelD3 = (rc_get_encoder_pos(Motor3Channel) * TWO_PI)/(1 * gear_ratio * encoder_res)*0.06;
+		// 2.2 Compute average position and speed
+		int tick_left_average = tick_left_sum / num_sample % total_tick;
+		int tick_left_diff = tick_left_sum - tick_left_0;
 	
-		error_left=V1*0.05-WheelD1;
-		error_right=V2*0.05-WheelD2;
-		error3=V3*0.05-WheelD3;
+		pos_left = ((float)tick_left_average * TWO_PI) / ((float)total_tick);
+		vel_left = ((float)tick_left_diff * TWO_PI) / (((float)total_tick) * (0.002*(float)(num_sample-1)));
 	
-		integral_left = integral_left + error_left;
-		integral_right = integral_right + error_right;
-		integral_right = integral3 + error3;
+		// Publish position and velocity
+		ROS_INFO("pos_left = %0.6f", pos_left * 360 / TWO_PI);
+		//ROS_INFO("pos_left = %0.6f, pos_right = %0.6f", pos_left * 360 / TWO_PI, pos_right * 360 / TWO_PI);
+		
+		/*
+		// 2.3 PID controller for duty
+		error_left = pos_left_des - pos_left;
+		derivative_left = vel_left_des - vel_left;
+		integral_left = 0.0;
+		duty_left = PID_duty(error_left, integral_left, derivative_left);
+
+		// Soft start
+		if((duty_left - duty_left_prior) > 0.3)
+	  		duty_left = duty_left_prior + 0.3;
+		else if((duty_left - duty_left_prior) < -0.3 )
+	  		duty_left = duty_left_prior-0.3;
 	
-		derivative_left=error_left-errorp1;
-		derivative_right=error_right-errorp2;
-		derivative3=error3-errorp3;
-
-		duty_left=-1*PID_duty(error_left, kp, ki, kd, integral_left, derivative_left);
-		duty_right=-1*PID_duty(error_right, kp_M2, ki_M2, kd_M2, integral_right, derivative_right);
-		M3_Duty=-1*PID_duty(error3, kp_M3, ki_M3, kd_M3, integral3, derivative3);
-
-		// soft start part
-		if(duty_left-duty_left_p>0.3)
-	  		duty_left = duty_left_p+0.3;
-		else if( duty_left-duty_left_p<-0.3 )
-	  		duty_left = duty_left_p-0.3;
-
-		if(duty_right-duty_right_p>0.3)
-	  		duty_right = duty_right_p+0.3;
-		else if( duty_right-duty_right_p<-0.3 )
-	  		duty_right = duty_right_p-0.3;
-
-		if(M3_Duty-M3_Duty_p>0.3)
-	 		M3_Duty = M3_Duty_p+0.3;
-		else if( duty_right-duty_right_p<-0.3 )
-	  		M3_Duty = M3_Duty_p-0.3;
-
-		duty_left_p=duty_left;
-		duty_right_p=duty_right;
-		M3_Duty_p=M3_Duty;
-
+		duty_left_prior = duty_left;
+	
+		// Set motor duty
 		rc_set_motor(Channel_Left, duty_left);
-		rc_set_motor(Channel_Right, duty_right);
-		rc_set_motor(Motor3Channel, M3_Duty);
-		//double secs =ros::Time::now().toSec();
-		//ROS_INFO("time= %0.8f ", secs);
-		ros::spinOnce();
-		r.sleep();
+
+		// Publish duty
+		ROS_INFO("duty_left = %0.2f", duty_left);
+		//ROS_INFO("duty_left = %0.2f, duty_right = %0.2f", duty_left, duty_right);
+		*/
 	}
-	ROS_INFO("Vf1, Vf2, Vf3= %0.6f %0.6f %0.6f", WheelD1/0.05, WheelD2/0.05, WheelD3/0.05);
-	ROS_INFO("D1, D2, D3= %1.2f %1.2f %1.2f", duty_left, duty_right, M3_Duty);
-	
-	rc_set_encoder_pos(Channel_Left,0);
-  	rc_set_encoder_pos(Channel_Right,0);
-	rc_set_encoder_pos(Motor3Channel,0);
-
-//	rc_usleep(10000);
-
-}
 
   /**
    * ros::spin() will enter a loop, pumping callbacks.  With this version, all
@@ -240,11 +233,7 @@ int main(int argc, char **argv)
    * will exit when Ctrl-C is pressed, or the node is shutdown by the master.
    */
 //  ros::spin();
-  return 0;
-
-  rc_set_motor(Channel_Left,0);
-  rc_set_motor(Channel_Right,0);
-  rc_set_motor(Motor3Channel,0);
+	return 0;
 
 }
 
