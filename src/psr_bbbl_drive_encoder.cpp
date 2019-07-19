@@ -180,10 +180,10 @@ int main(int argc, char **argv)
 		cout << "Please enter sampling number (int): ";
 		cin >> num_sample;
 		
-		cout << "Correct input for"; 
-		cout << "motor_left_dir = " << motor_left_dir;
-		cout << "motor_right_dir = " << motor_right_dir;
-		cout << "duty_soft = " << duty_soft;
+		cout << "Correct input for" << endl; 
+		cout << "motor_left_dir = " << motor_left_dir << endl;
+		cout << "motor_right_dir = " << motor_right_dir << endl;
+		cout << "duty_soft = " << duty_soft << endl;
 		cout << "num_sample = " << num_sample << "?(y/n)";
 		cin >> yes_or_no;		
 		if(yes_or_no == 'y') break;
