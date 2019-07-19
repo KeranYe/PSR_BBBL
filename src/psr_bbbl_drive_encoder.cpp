@@ -51,7 +51,7 @@ float vel_right_des = 0;
 
 // Motor channel
 unsigned int Channel_Left = 1;
-unsigned int Channel_Right = 4;
+unsigned int Channel_Right = 2;
 
 // Moter mechanical property
 float gear_ratio = 297.9;
