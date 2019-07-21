@@ -239,17 +239,25 @@ int main(int argc, char **argv)
 		// 2.1 Compute average position and velocity in 5 samples
 		int tick_left_sum = 0;
 		int tick_left_0 = 0;
+		int tick_right_sum = 0;
+		int tick_right_0 = 0;
 		for (int i = 0; i < num_sample; ++i){
 			// 2.1.1 Get position
 			if(i == 0){
-				tick_left_0 = (-1)*rc_get_encoder_pos(Channel_Left);
-				tick_left_sum += tick_left_0;}
-			else
+				tick_left_0 = (-1)*rc_get_encoder_pos(Channel_Left); // Positive number
+				tick_right_0 = (1)*rc_get_encoder_pos(Channel_Right); // Positive number
+				tick_left_sum += tick_left_0; // Positive number
+				tick_right_sum += tick_right_0; // Positive number}
+			else{
 				tick_left_sum += (-1)*rc_get_encoder_pos(Channel_Left);
+				tick_right_sum += (1)*rc_get_encoder_pos(Channel_Right);}
 			
 			// Reset encoder if necessary		
 			if(i == (num_sample-1) && (-1)*rc_get_encoder_pos(Channel_Left) > total_tick)
-				rc_set_encoder_pos(Channel_Left, (-1)*rc_get_encoder_pos(Channel_Left)-total_tick);
+				//rc_set_encoder_pos(Channel_Left, (-1)*rc_get_encoder_pos(Channel_Left) - total_tick);
+				 rc_set_encoder_pos(Channel_Left, rc_get_encoder_pos(Channel_Left) + total_tick); // negative offset
+			if(i == (num_sample-1) && (1)*rc_get_encoder_pos(Channel_Right) > total_tick)
+				rc_set_encoder_pos(Channel_Right, (1)*rc_get_encoder_pos(Channel_Right) - total_tick); // positive offset
 		
 			ros::spinOnce();
 			r.sleep();
@@ -257,29 +265,53 @@ int main(int argc, char **argv)
 
 		// 2.2 Compute average position and speed
 		int tick_left_average = tick_left_sum / num_sample % total_tick;
+		int tick_right_average = tick_right_sum / num_sample % total_tick;
+		
 		if(tick_left_average < 0)
 			tick_left_average += total_tick;
+		if(tick_right_average < 0)
+			tick_right_average += total_tick;
+			
 		int tick_left_diff = tick_left_sum - tick_left_0;
+		int tick_right_diff = tick_right_sum - tick_right_0;
 	
 		pos_left = ((float)tick_left_average * TWO_PI) / ((float)total_tick);
+		pos_right = ((float)tick_right_average * TWO_PI) / ((float)total_tick);
 		pos_left_diff = pos_left - pos_left_prior;
+		pos_right_diff = pos_right - pos_right_prior;
+		
+		// Special case when pos near 0
 		if(pos_left_diff < ((-1)*PI))
 			pos_left_diff += TWO_PI;
 		else if(pos_left_diff > PI)
 			pos_left_diff -= TWO_PI;		
 		else
 			pos_left_diff = pos_left_diff;
-		vel_left = pos_left_diff / (0.002*(float)num_sample);
+		
+		// Special case when pos near 0
+		if(pos_right_diff < ((-1)*PI))
+			pos_right_diff += TWO_PI;
+		else if(pos_right_diff > PI)
+			pos_right_diff -= TWO_PI;		
+		else
+			pos_right_diff = pos_right_diff;
+			
+		vel_left = pos_left_diff / (0.002*(float)num_sample); // rad per second
+		vel_right = pos_right_diff / (0.002*(float)num_sample); // rad per second
 		//vel_left = ((float)tick_left_diff * TWO_PI) / (((float)total_tick) * (0.002*(float)(num_sample-1)));
 	
 		// Publish position and velocity
-		//ROS_INFO("pos_left = %0.6f", pos_left * 360 / TWO_PI);
-		ROS_INFO("pos_left = %0.6f, vel_left = %0.6f", pos_left * 360 / TWO_PI, vel_left * 360 / TWO_PI);
-		//ROS_INFO("pos_left = %0.6f, pos_right = %0.6f", pos_left * 360 / TWO_PI, pos_right * 360 / TWO_PI);
+		ROS_INFO("pos_left = %0.6f, pos_right = %0.6f, vel_left = %0.6f, vel_right = %0.6f", \
+			 pos_left * 360 / TWO_PI, pos_right * 360 / TWO_PI, vel_left * 360 / TWO_PI, vel_right * 360 / TWO_PI);
 		
 		
 		// 2.3 PID controller for duty
+		
+		// 2.3.1 errors
 		error_left = pos_left_des - pos_left;
+		error_right = pos_right_des - pos_right;
+		
+		// Special case when pos near 0
 		if(error_left > PI)
 			error_left = error_left - TWO_PI;
 		else if(error_left < ((-1)*PI))
@@ -287,28 +319,49 @@ int main(int argc, char **argv)
 		else
 			error_left = error_left;
 		
+		// Special case when pos near 0	
+		if(error_right > PI)
+			error_right = error_right - TWO_PI;
+		else if(error_right < ((-1)*PI))
+			error_right = error_right + TWO_PI;
+		else
+			error_right = error_right;
+		
+		// 2.3.2 derivatives
 		derivative_left = vel_left_des - vel_left;
+		derivative_right = vel_right_des - vel_right;
 		
+		// 2.3.3 integrals
 		integral_left = 0.0;
+		integral_right = 0.0;
 		
+		// 2.3.4 duty from PID
 		duty_left = motor_left_dir*PID_duty(error_left, integral_left, derivative_left);
+		duty_right = motor_right_dir*PID_duty(error_right, integral_right, derivative_right);
 
 		// Soft start
 		if((duty_left - duty_left_prior) > duty_soft)
 	  		duty_left = duty_left_prior + duty_soft;
 		else if((duty_left - duty_left_prior) < - duty_soft )
 	  		duty_left = duty_left_prior - duty_soft;
-	
+		
+		if((duty_right - duty_right_prior) > duty_soft)
+	  		duty_right = duty_right_prior + duty_soft;
+		else if((duty_right - duty_right_prior) < - duty_soft )
+	  		duty_right = duty_right_prior - duty_soft;
+		
 		duty_left_prior = duty_left;
+		duty_right_prior = duty_right;
 	
 		// Set motor duty
 		rc_set_motor(Channel_Left, duty_left);
+		rc_set_motor(Channel_Right, duty_right);
 
 		// Publish duty
-		//ROS_INFO("duty_left = %0.2f", duty_left);
 		//ROS_INFO("duty_left = %0.2f, duty_right = %0.2f", duty_left, duty_right);
 		
 		pos_left_prior = pos_left;
+		pos_right_prior = pos_right;
 		//rc_set_motor(Channel_Left, (-1)*(0.3));// Velocity Test
 	}
 
