@@ -28,7 +28,7 @@ float z_max = 1;
 
 // Define duty cycle for dual motors
 unsigned int LeftChannel = 1;
-unsigned int RightChannel  = 4;
+unsigned int RightChannel  = 2;
 float LeftDuty = 0;
 float RightDuty = 0;
 
