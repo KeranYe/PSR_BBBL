@@ -247,7 +247,7 @@ int main(int argc, char **argv)
 				tick_left_0 = (-1)*rc_get_encoder_pos(Channel_Left); // Positive number
 				tick_right_0 = (1)*rc_get_encoder_pos(Channel_Right); // Positive number
 				tick_left_sum += tick_left_0; // Positive number
-				tick_right_sum += tick_right_0; // Positive number}
+				tick_right_sum += tick_right_0;} // Positive number
 			else{
 				tick_left_sum += (-1)*rc_get_encoder_pos(Channel_Left);
 				tick_right_sum += (1)*rc_get_encoder_pos(Channel_Right);}
