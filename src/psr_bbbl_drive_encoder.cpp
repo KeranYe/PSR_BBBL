@@ -254,8 +254,8 @@ int main(int argc, char **argv)
 			
 			// Reset encoder if necessary		
 			if(i == (num_sample-1) && (-1)*rc_get_encoder_pos(Channel_Left) > total_tick)
-				//rc_set_encoder_pos(Channel_Left, (-1)*rc_get_encoder_pos(Channel_Left) - total_tick);
-				 rc_set_encoder_pos(Channel_Left, rc_get_encoder_pos(Channel_Left) + total_tick); // negative offset
+				rc_set_encoder_pos(Channel_Left, (-1)*rc_get_encoder_pos(Channel_Left) - total_tick);
+				 //rc_set_encoder_pos(Channel_Left, rc_get_encoder_pos(Channel_Left) + total_tick); // negative offset
 			if(i == (num_sample-1) && (1)*rc_get_encoder_pos(Channel_Right) > total_tick)
 				rc_set_encoder_pos(Channel_Right, (1)*rc_get_encoder_pos(Channel_Right) - total_tick); // positive offset
 		
