@@ -102,12 +102,18 @@ void ros_compatible_shutdown_signal_handler(int signo)
 {
   if (signo == SIGINT)
     {
+      rc_set_motor(Channel_Left,0);
+      rc_set_motor(Channel_Right,0);
+      rc_disable_motors();
       rc_set_state(EXITING);
       ROS_INFO("\nReceived SIGINT Ctrl-C.");
       ros::shutdown();
     }
   else if (signo == SIGTERM)
     {
+      rc_set_motor(Channel_Left,0);
+      rc_set_motor(Channel_Right,0);
+      rc_disable_motors();
       rc_set_state(EXITING);
       ROS_INFO("Received SIGTERM.");
       ros::shutdown();
