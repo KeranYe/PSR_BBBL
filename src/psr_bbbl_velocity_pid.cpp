@@ -408,6 +408,9 @@ int main(int argc, char **argv)
 		vel_left_prior = vel_left;
 		vel_right_prior = vel_right;
 		//rc_set_motor(Channel_Left, (-1)*(0.3));// Velocity Test
+		
+		ros::spinOnce();
+		r.sleep();
 	}
 
   /**
