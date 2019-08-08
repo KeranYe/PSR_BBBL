@@ -401,7 +401,7 @@ int main(int argc, char **argv)
 		rc_set_motor(Channel_Right, duty_right);
 
 		// Publish duty
-		//ROS_INFO("duty_left = %0.2f, duty_right = %0.2f", duty_left, duty_right);
+		ROS_INFO("duty_left = %0.2f, duty_right = %0.2f", duty_left, duty_right);
 		
 		pos_left_prior = pos_left;
 		pos_right_prior = pos_right;
