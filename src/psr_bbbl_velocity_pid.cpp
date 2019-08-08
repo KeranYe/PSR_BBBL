@@ -103,7 +103,7 @@ void drive_Callback(const psr_msgs::PSR_Drive::ConstPtr& psr_drive_msg)
 	// Here we borrow geometry_msgs/Twist to store desired states: positions and velocities.
   	// Will create specific message type for PSR later.
 
-
+	ROS_INFO("Message received!");
   	//Retrieve data to global state variables
   	reset = psr_drive_msg -> reset;
 	pos_left_des = psr_drive_msg -> theta_left_des;
