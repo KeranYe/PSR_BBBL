@@ -74,8 +74,12 @@ float duty_soft = 0;
 float motor_left_dir = -1.0;
 float motor_right_dir = 1.0;
 
+// Wheel direction
+float wheel_dir_left = -1.0;
+float wheel_dir_right = 1.0;
+
 // Sampling
-int num_sample = 10;
+int num_sample = 25;
 
 //-----------------------------
 // Define Controller Parameters
@@ -187,7 +191,7 @@ int main(int argc, char **argv)
 		cin >> motor_right_dir;
 		cout << "Please enter soft portion for duty cycle ((0,0.3], float): ";
 		cin >> duty_soft;
-		cout << "Please enter sampling number (int): ";
+		cout << "Please enter sampling number (int, odd): ";
 		cin >> num_sample;
 		
 		cout << "Correct input for" << endl; 
@@ -200,6 +204,9 @@ int main(int argc, char **argv)
 	}
 
 	// 1.2 Temp states
+	float pos_array_left[num_sample] = {};
+	float pos_array_right[num_sample] = {};
+	
 	float error_left = 0;
 	float error_right = 0;
 
@@ -250,7 +257,8 @@ int main(int argc, char **argv)
 	rc_enable_motors();
 	ros::Rate r(500);  //500 hz
 	// Assume initial pos for encoder has been set by funtion rc_test_encoders
-	//int num_sample = 10; 
+	//int num_sample = 25; 
+	int middle_index = (num_sample-1)/2;
 	while(ros::ok()){
 		// Check reset flag
 		if(reset){
@@ -266,106 +274,45 @@ int main(int argc, char **argv)
 			
 			reset = !reset;
 		}
-		// 2.1 Compute average position and velocity in 5 samples
-		int tick_left_sum = 0;
-		int tick_left_0 = 0;
-		int tick_right_sum = 0;
-		int tick_right_0 = 0;
-		for (int i = 0; i < num_sample; ++i){
-			// 2.1.1 Get position
-			if(i == 0){
-				tick_left_0 = (-1)*rc_get_encoder_pos(Channel_Left); // Positive number
-				tick_right_0 = (1)*rc_get_encoder_pos(Channel_Right); // Positive number
-				tick_left_sum += tick_left_0; // Positive number
-				tick_right_sum += tick_right_0;} // Positive number
-			else{
-				tick_left_sum += (-1)*rc_get_encoder_pos(Channel_Left);
-				tick_right_sum += (1)*rc_get_encoder_pos(Channel_Right);}
-			
-			// Reset encoder if necessary		
-			if(i == (num_sample-1) && (-1)*rc_get_encoder_pos(Channel_Left) > total_tick)
-				rc_set_encoder_pos(Channel_Left, (-1)*rc_get_encoder_pos(Channel_Left) - total_tick);
-				 //rc_set_encoder_pos(Channel_Left, rc_get_encoder_pos(Channel_Left) + total_tick); // negative offset
-			if(i == (num_sample-1) && (1)*rc_get_encoder_pos(Channel_Right) > total_tick)
-				rc_set_encoder_pos(Channel_Right, (1)*rc_get_encoder_pos(Channel_Right) - total_tick); // positive offset
+		// Reset encoder
+		rc_set_encoder_pos(Channel_Left,0);
+		rc_set_encoder_pos(Channel_Right,0);
 		
+		// 2.1 Compute and store position in 25 samples
+		for (int i = 0; i < num_sample; ++i){
+			pos_array_left[i] = wheel_dir_left * (float)rc_get_encoder_pos(Channel_Left) * TWO_PI) / ((float)total_tick;
+			pos_array_right[i] = wheel_dir_right * (float)rc_get_encoder_pos(Channel_Right) * TWO_PI) / ((float)total_tick;
+			
 			ros::spinOnce();
 			r.sleep();
 		}
-
-		// 2.2 Compute average position and speed
-		int tick_left_average = tick_left_sum / num_sample % total_tick;
-		int tick_right_average = tick_right_sum / num_sample % total_tick;
-		
-		if(tick_left_average < 0)
-			tick_left_average += total_tick;
-		if(tick_right_average < 0)
-			tick_right_average += total_tick;
+														     
+		// 2.2 Compute velocity and acceleration for middle sample
+		// 1/4 and 3/4 point velocity
+		float vel_half_1_left = (pos_array_left[middle_index] - pos_array_left[0]) / ((float)middle_index * 0.002);
+		float vel_half_2_left = (pos_array_left[num_sample-1] - pos_array_left[middle_index]) / ((float)middle_index * 0.002);												    
+		float vel_half_1_right = (pos_array_right[middle_index] - pos_array_right[0]) / ((float)middle_index * 0.002);
+		float vel_half_2_right = (pos_array_right[num_sample-1] - pos_array_right[middle_index]) / ((float)middle_index * 0.002);												    
+		// middle point velocity and acceleration												     
+		vel_left = (vel_half_2_left + vel_half_1_left) / 2.0;
+		vel_right = (vel_half_2_right + vel_half_1_right) / 2.0;
+		accel_left = (vel_half_2_left - vel_half_1_left) / ((float)middle_index * 0.002);
+		accel_right = (vel_half_2_right - vel_half_1_right) / ((float)middle_index * 0.002);
 			
-		int tick_left_diff = tick_left_sum - tick_left_0;
-		int tick_right_diff = tick_right_sum - tick_right_0;
-		// 2.2.1 Compute position
-		pos_left = ((float)tick_left_average * TWO_PI) / ((float)total_tick);
-		pos_right = ((float)tick_right_average * TWO_PI) / ((float)total_tick);
-		pos_left_diff = pos_left - pos_left_prior;
-		pos_right_diff = pos_right - pos_right_prior;
-		
-		// Special case when pos near 0
-		if(pos_left_diff < ((-1)*PI))
-			pos_left_diff += TWO_PI;
-		else if(pos_left_diff > PI)
-			pos_left_diff -= TWO_PI;		
-		else
-			pos_left_diff = pos_left_diff;
-		
-		// Special case when pos near 0
-		if(pos_right_diff < ((-1)*PI))
-			pos_right_diff += TWO_PI;
-		else if(pos_right_diff > PI)
-			pos_right_diff -= TWO_PI;		
-		else
-			pos_right_diff = pos_right_diff;
-		
-		// 2.2.2 Compute velocity	
-		vel_left = pos_left_diff / (0.002*(float)num_sample); // rad per second
-		vel_right = pos_right_diff / (0.002*(float)num_sample); // rad per second
-		//vel_left = ((float)tick_left_diff * TWO_PI) / (((float)total_tick) * (0.002*(float)(num_sample-1)));
-		vel_left_diff = vel_left - vel_left_prior;
-		vel_right_diff = vel_right - vel_right_prior;
-		// 2.2.3 Compute acceleration
-		accel_left = vel_left_diff / (0.002*(float)num_sample); // rad per second square
-		accel_right = vel_right_diff / (0.002*(float)num_sample); // rad per second square
-			
-		// Publish position and velocity
-		ROS_INFO("pos_left = %0.6f, pos_right = %0.6f, vel_left = %0.6f, vel_right = %0.6f", \
-			 pos_left * 360 / TWO_PI, pos_right * 360 / TWO_PI, vel_left * 360 / TWO_PI, vel_right * 360 / TWO_PI);
-		
-		
+		// Publish velocity
+		ROS_INFO("vel_left = %0.6f, vel_right = %0.6f", \
+			 vel_left * 360 / TWO_PI, vel_right * 360 / TWO_PI);
+				
 		// 2.3 PID controller for duty
-		// This is a velocity PID controller, where duty = kp * (vel_des - vel) + ki * sum(vel_des - vel) + kd * (accel_des - accel)
+		// This is a velocity PID controller, 
+		// where duty = kp * (vel_des - vel) + ki * sum(vel_des - vel) + kd * (accel_des - accel)
 		
 		// 2.3.1 errors
 		error_left = vel_left_des - vel_left;
 		error_right = vel_right_des - vel_right;
 		//error_left = pos_left_des - pos_left;
 		//error_right = pos_right_des - pos_right;
-/*		
-		// Special case when pos near 0
-		if(error_left > PI)
-			error_left = error_left - TWO_PI;
-		else if(error_left < ((-1)*PI))
-			error_left = error_left + TWO_PI;
-		else
-			error_left = error_left;
-		
-		// Special case when pos near 0	
-		if(error_right > PI)
-			error_right = error_right - TWO_PI;
-		else if(error_right < ((-1)*PI))
-			error_right = error_right + TWO_PI;
-		else
-			error_right = error_right;
-*/		
+														     
 		// 2.3.2 derivatives
 		derivative_left = accel_left_des - accel_left;
 		derivative_right = accel_right_des - accel_right;
@@ -393,8 +340,7 @@ int main(int argc, char **argv)
 		else if((duty_right - duty_right_prior) < - duty_soft )
 	  		duty_right = duty_right_prior - duty_soft;
 		
-		duty_left_prior = duty_left;
-		duty_right_prior = duty_right;
+		
 	
 		// Set motor duty
 		rc_set_motor(Channel_Left, duty_left);
@@ -402,11 +348,10 @@ int main(int argc, char **argv)
 
 		// Publish duty
 		ROS_INFO("duty_left = %0.2f, duty_right = %0.2f", duty_left, duty_right);
+														     
+		duty_left_prior = duty_left;
+		duty_right_prior = duty_right;
 		
-		pos_left_prior = pos_left;
-		pos_right_prior = pos_right;
-		vel_left_prior = vel_left;
-		vel_right_prior = vel_right;
 		//rc_set_motor(Channel_Left, (-1)*(0.3));// Velocity Test
 	}
 
