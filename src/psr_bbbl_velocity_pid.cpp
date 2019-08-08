@@ -13,6 +13,7 @@ extern "C"
 #include "geometry_msgs/Twist.h"
 #include "unistd.h"
 #include <iostream>
+#include <psr_smach/PSR_Drive.h>
 using namespace std;
 
 //-----------------------------
@@ -21,7 +22,7 @@ using namespace std;
 
 // Flag for general purpose
 char yes_or_no = 'n';
-
+bool reset = false;
 //-----------------------------
 // Define States: 
 // pos = omega, vel = omega_dot
@@ -96,7 +97,7 @@ void chatterCallback(const std_msgs::String::ConstPtr& msg)
 }
 
 
-void drive_Callback(const geometry_msgs::Twist::ConstPtr& cmd_vel_twist)
+void drive_Callback(const psr_smach::PSR_Drive::ConstPtr& psr_drive_msg)
 {
 
 	// Here we borrow geometry_msgs/Twist to store desired states: positions and velocities.
@@ -104,12 +105,13 @@ void drive_Callback(const geometry_msgs::Twist::ConstPtr& cmd_vel_twist)
 
 
   	//Retrieve data to global state variables
-  	pos_left_des = cmd_vel_twist -> linear.x;
-  	pos_right_des = cmd_vel_twist -> linear.y;
-	vel_left_des = cmd_vel_twist -> angular.x;
-  	vel_right_des = cmd_vel_twist -> angular.y;
-	accel_left_des = cmd_vel_twist -> linear.z;
-	accel_right_des = cmd_vel_twist -> angular.z;
+  	reset = psr_drive_msg -> reset;
+	pos_left_des = psr_drive_msg -> theta_left_des;
+  	pos_right_des = psr_drive_msg -> theta_right_des;
+	vel_left_des = psr_drive_msg -> omega_left_des;
+  	vel_right_des = psr_drive_msg -> omega_right_des;
+	accel_left_des = psr_drive_msg -> alpha_left_des;
+	accel_right_des = psr_drive_msg -> alpha_right_des;
 
 }
 
@@ -250,6 +252,20 @@ int main(int argc, char **argv)
 	// Assume initial pos for encoder has been set by funtion rc_test_encoders
 	//int num_sample = 10; 
 	while(ros::ok()){
+		// Check reset flag
+		if(reset){
+			// reset pid terms
+			error_left = 0;
+			error_right = 0;
+
+			integral_left = 0;
+			integral_right = 0;
+	
+			derivative_left = 0;
+			derivative_right = 0;
+			
+			reset = !reset;
+		}
 		// 2.1 Compute average position and velocity in 5 samples
 		int tick_left_sum = 0;
 		int tick_left_0 = 0;
