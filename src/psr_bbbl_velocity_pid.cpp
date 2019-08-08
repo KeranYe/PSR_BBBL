@@ -13,7 +13,7 @@ extern "C"
 #include "geometry_msgs/Twist.h"
 #include "unistd.h"
 #include <iostream>
-#include <psr_bbbl/PSR_Drive.h>
+#include <psr_msgs/PSR_Drive.h>
 using namespace std;
 
 //-----------------------------
@@ -97,7 +97,7 @@ void chatterCallback(const std_msgs::String::ConstPtr& msg)
 }
 
 
-void drive_Callback(const psr_bbbl::PSR_Drive::ConstPtr& psr_drive_msg)
+void drive_Callback(const psr_msgs::PSR_Drive::ConstPtr& psr_drive_msg)
 {
 
 	// Here we borrow geometry_msgs/Twist to store desired states: positions and velocities.
