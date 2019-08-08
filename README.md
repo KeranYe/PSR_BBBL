@@ -8,6 +8,8 @@ In folder `src` are `.cpp` scripts for each node.  In folder `scripts` are `.sh`
 
 ### How to setup the package
 
+Please install package `psr_msgs` first.
+
 1. Navigate to `~\catkin_ws\src`
 
 2. Copy the download link and `git clone` to current directory
