@@ -75,8 +75,8 @@ float motor_left_dir = -1.0;
 float motor_right_dir = 1.0;
 
 // Wheel direction
-float wheel_dir_left = -1.0;
-float wheel_dir_right = 1.0;
+float wheel_dir_left = 1.0;
+float wheel_dir_right = -1.0;
 
 // Sampling
 int num_sample = 25;
@@ -185,9 +185,9 @@ int main(int argc, char **argv)
 	// Motor properties
 	while(1){
 		yes_or_no = 'n';
-		cout << "Please enter left motor direction (1 or -1, float): ";
+		cout << "Please enter left motor direction (1 or -1, float, default = -1): ";
 		cin >> motor_left_dir;
-		cout << "Please enter right motor direction (1 or -1, float): ";
+		cout << "Please enter right motor direction (1 or -1, float, default = 1): ";
 		cin >> motor_right_dir;
 		cout << "Please enter soft portion for duty cycle ((0,0.3], float): ";
 		cin >> duty_soft;
