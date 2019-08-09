@@ -280,8 +280,8 @@ int main(int argc, char **argv)
 		
 		// 2.1 Compute and store position in 25 samples
 		for (int i = 0; i < num_sample; ++i){
-			pos_array_left[i] = wheel_dir_left * (float)rc_get_encoder_pos(Channel_Left) * TWO_PI) / (float)total_tick;
-			pos_array_right[i] = wheel_dir_right * (float)rc_get_encoder_pos(Channel_Right) * TWO_PI) / (float)total_tick;
+			pos_array_left[i] = wheel_dir_left * (float)rc_get_encoder_pos(Channel_Left) * TWO_PI / (float)total_tick;
+			pos_array_right[i] = wheel_dir_right * (float)rc_get_encoder_pos(Channel_Right) * TWO_PI / (float)total_tick;
 			
 			ros::spinOnce();
 			r.sleep();
