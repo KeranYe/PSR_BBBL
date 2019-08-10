@@ -307,12 +307,12 @@ int main(int argc, char **argv)
 														     
 		// 2.2 Compute velocity and acceleration for middle sample
 		// get position for 3 samples
-		float pos_1_left = getPartialAverage(pos_array_left[], 0, first_index);
-		float pos_2_left = getPartialAverage(pos_array_left[], num_sample, second_index);
-		float pos_3_left = getPartialAverage(pos_array_left[], 2*num_sample, first_index);
-		float pos_1_right = getPartialAverage(pos_array_right[], 0, first_index);
-		float pos_2_right = getPartialAverage(pos_array_right[], num_sample, second_index);
-		float pos_3_right = getPartialAverage(pos_array_right[], 2*num_sample, first_index);
+		float pos_1_left = getPartialAverage(pos_array_left, 0, first_index);
+		float pos_2_left = getPartialAverage(pos_array_left, num_sample, second_index);
+		float pos_3_left = getPartialAverage(pos_array_left, 2*num_sample, first_index);
+		float pos_1_right = getPartialAverage(pos_array_right, 0, first_index);
+		float pos_2_right = getPartialAverage(pos_array_right, num_sample, second_index);
+		float pos_3_right = getPartialAverage(pos_array_right, 2*num_sample, first_index);
 		// 1/4 and 3/4 point velocity
 		float vel_half_1_left = (pos_2_left - pos_1_left) / ((float)first_index * 0.002);
 		float vel_half_2_left = (pos_3_left - pos_2_left) / ((float)first_index * 0.002);												    
