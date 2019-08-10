@@ -79,7 +79,8 @@ float wheel_dir_left = 1.0;
 float wheel_dir_right = -1.0;
 
 // Sampling
-int num_sample = 25;
+int num_sample = 3;
+unsigned int rate = 500;
 
 //-----------------------------
 // Define Controller Parameters
@@ -159,6 +160,18 @@ float PID_duty(float error, float integral, float derivative)
 	return duty;
 }
 
+float getPartialAverage(float arr[], int a, int b) {
+	int i;
+  	float sum = 0;       
+  	float avg;          
+
+   for (i = a; i < (b+1); ++i) {
+      sum += arr[i];
+   }
+   avg = sum / (b-a+1);
+
+   return avg;
+}
 
 int main(int argc, char **argv)
 {
@@ -191,21 +204,24 @@ int main(int argc, char **argv)
 		cin >> motor_right_dir;
 		cout << "Please enter soft portion for duty cycle ((0,0.3], float): ";
 		cin >> duty_soft;
-		cout << "Please enter sampling number (int, odd): ";
+		cout << "Please enter sampling number (int, odd, default = 3): ";
+		cin >> num_sample;
+		cout << "Please enter sampling rate (int, default = 500): ";
 		cin >> num_sample;
 		
 		cout << "Correct input for" << endl; 
 		cout << "motor_left_dir = " << motor_left_dir << endl;
 		cout << "motor_right_dir = " << motor_right_dir << endl;
 		cout << "duty_soft = " << duty_soft << endl;
+		cout << "rate = " << rate << endl;
 		cout << "num_sample = " << num_sample << "?(y/n)";
 		cin >> yes_or_no;		
 		if(yes_or_no == 'y') break;
 	}
 
 	// 1.2 Temp states
-	float pos_array_left[num_sample] = {};
-	float pos_array_right[num_sample] = {};
+	float pos_array_left[3*num_sample] = {};
+	float pos_array_right[3*num_sample] = {};
 	
 	float error_left = 0;
 	float error_right = 0;
@@ -238,7 +254,7 @@ int main(int argc, char **argv)
 
 	ros::NodeHandle n;
 
-	ros::Subscriber sub = n.subscribe("/PSR/motors", 10, drive_Callback); // Need a reset flag in self-defined msg
+	ros::Subscriber sub = n.subscribe("/PSR/motors", 1, drive_Callback); // Need a reset flag in self-defined msg
 
 	if(rc_initialize()<0)
 	{
@@ -255,10 +271,12 @@ int main(int argc, char **argv)
 	//------------------
 
 	rc_enable_motors();
-	ros::Rate r(500);  //500 hz
+	ros::Rate r(rate);  //500 hz
 	// Assume initial pos for encoder has been set by funtion rc_test_encoders
 	//int num_sample = 25; 
-	int middle_index = (num_sample-1)/2;
+	int first_index = num_sample-1;
+	int second_index = 2*num_sample-1;
+	int third_index = 3*num_sample-1;
 	while(ros::ok()){
 		// Check reset flag
 		if(reset){
@@ -279,7 +297,7 @@ int main(int argc, char **argv)
 		rc_set_encoder_pos(Channel_Right,0);
 		
 		// 2.1 Compute and store position in 25 samples
-		for (int i = 0; i < num_sample; ++i){
+		for (int i = 0; i < (3*num_sample); ++i){
 			pos_array_left[i] = wheel_dir_left * (float)rc_get_encoder_pos(Channel_Left) * TWO_PI / (float)total_tick;
 			pos_array_right[i] = wheel_dir_right * (float)rc_get_encoder_pos(Channel_Right) * TWO_PI / (float)total_tick;
 			
@@ -288,20 +306,29 @@ int main(int argc, char **argv)
 		}
 														     
 		// 2.2 Compute velocity and acceleration for middle sample
+		// get position for 3 samples
+		float pos_1_left = getPartialAverage(pos_array_left[], 0, first_index);
+		float pos_2_left = getPartialAverage(pos_array_left[], num_sample, second_index);
+		float pos_3_left = getPartialAverage(pos_array_left[], 2*num_sample, first_index);
+		float pos_1_right = getPartialAverage(pos_array_right[], 0, first_index);
+		float pos_2_right = getPartialAverage(pos_array_right[], num_sample, second_index);
+		float pos_3_right = getPartialAverage(pos_array_right[], 2*num_sample, first_index);
 		// 1/4 and 3/4 point velocity
-		float vel_half_1_left = (pos_array_left[middle_index] - pos_array_left[0]) / ((float)middle_index * 0.002);
-		float vel_half_2_left = (pos_array_left[num_sample-1] - pos_array_left[middle_index]) / ((float)middle_index * 0.002);												    
-		float vel_half_1_right = (pos_array_right[middle_index] - pos_array_right[0]) / ((float)middle_index * 0.002);
-		float vel_half_2_right = (pos_array_right[num_sample-1] - pos_array_right[middle_index]) / ((float)middle_index * 0.002);												    
+		float vel_half_1_left = (pos_2_left - pos_1_left) / ((float)first_index * 0.002);
+		float vel_half_2_left = (pos_3_left - pos_2_left) / ((float)first_index * 0.002);												    
+		float vel_half_1_right = (pos_2_right - pos_1_right) / ((float)first_index * 0.002);
+		float vel_half_2_right = (pos_3_right - pos_2_right) / ((float)first_index * 0.002);												    
 		// middle point velocity and acceleration												     
 		vel_left = (vel_half_2_left + vel_half_1_left) / 2.0;
 		vel_right = (vel_half_2_right + vel_half_1_right) / 2.0;
-		accel_left = (vel_half_2_left - vel_half_1_left) / ((float)middle_index * 0.002);
-		accel_right = (vel_half_2_right - vel_half_1_right) / ((float)middle_index * 0.002);
+		accel_left = (vel_half_2_left - vel_half_1_left) / ((float)first_index * 0.002);
+		accel_right = (vel_half_2_right - vel_half_1_right) / ((float)first_index * 0.002);
 			
 		// Publish velocity
-		ROS_INFO("vel_left = %0.6f, vel_right = %0.6f", \
-			 vel_left * 360 / TWO_PI, vel_right * 360 / TWO_PI);
+		ROS_INFO("vel_left = %f, vel_right = %f", \
+			 vel_left, vel_right);
+//		ROS_INFO("vel_left = %0.6f, vel_right = %0.6f", \
+//			 vel_left * 360 / TWO_PI, vel_right * 360 / TWO_PI);
 				
 		// 2.3 PID controller for duty
 		// This is a velocity PID controller, 
@@ -352,6 +379,8 @@ int main(int argc, char **argv)
 		duty_left_prior = duty_left;
 		duty_right_prior = duty_right;
 		
+//		ros::spinOnce();
+//		r.sleep();
 		//rc_set_motor(Channel_Left, (-1)*(0.3));// Velocity Test
 	}
 
