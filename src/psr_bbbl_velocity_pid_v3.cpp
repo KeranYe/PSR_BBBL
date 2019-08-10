@@ -88,6 +88,7 @@ float wheel_dir_right = -1.0;
 
 // Sampling
 int num_sample = 25;
+unsigned int rate = 500; 
 
 //-----------------------------
 // Define Controller Parameters
@@ -201,6 +202,8 @@ int main(int argc, char **argv)
 		cin >> duty_soft;
 		cout << "Please enter sampling number (int, odd, default = 25): ";
 		cin >> num_sample;
+		cout << "Please enter sampling rate (int, default = 500): ";
+		cin >> rate;
 		
 		cout << "Correct input for" << endl; 
 		cout << "motor_left_dir = " << motor_left_dir << endl;
@@ -263,7 +266,7 @@ int main(int argc, char **argv)
 	//------------------
 
 	rc_enable_motors();
-	ros::Rate r(500);  //500 hz
+	ros::Rate r(rate);  //500 hz
 	// Assume initial pos for encoder has been set by funtion rc_test_encoders
 	//int num_sample = 25; 
 	//int middle_index = (num_sample-1)/2;
