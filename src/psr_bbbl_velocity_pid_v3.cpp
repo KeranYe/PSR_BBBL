@@ -199,14 +199,14 @@ int main(int argc, char **argv)
 		cin >> motor_right_dir;
 		cout << "Please enter soft portion for duty cycle ((0,0.3], float): ";
 		cin >> duty_soft;
-		cout << "Please enter sampling number (int, odd): ";
+		cout << "Please enter sampling number (int, odd, default = 25): ";
 		cin >> num_sample;
 		
 		cout << "Correct input for" << endl; 
 		cout << "motor_left_dir = " << motor_left_dir << endl;
 		cout << "motor_right_dir = " << motor_right_dir << endl;
 		cout << "duty_soft = " << duty_soft << endl;
-		cout << "num_sample (default = 25) = " << num_sample << "?(y/n)";
+		cout << "num_sample = " << num_sample << "?(y/n)";
 		cin >> yes_or_no;		
 		if(yes_or_no == 'y') break;
 	}
@@ -283,8 +283,8 @@ int main(int argc, char **argv)
 			reset = !reset;
 		}
 		// Reset encoder
-		rc_set_encoder_pos(Channel_Left,0);
-		rc_set_encoder_pos(Channel_Right,0);
+//		rc_set_encoder_pos(Channel_Left,0);
+//		rc_set_encoder_pos(Channel_Right,0);
 		
 		// 2.1 Compute and store position in 25 samples
 		for (int i = 0; i < num_sample; ++i){
@@ -339,6 +339,8 @@ int main(int argc, char **argv)
 			ros::spinOnce();
 			r.sleep();
 		}
+		rc_set_encoder_pos(Channel_Left,0);
+		rc_set_encoder_pos(Channel_Right,0);
 		/*										     
 		// 2.2 Compute velocity and acceleration for middle sample
 		// 1/4 and 3/4 point velocity
