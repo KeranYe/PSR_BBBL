@@ -74,6 +74,10 @@ float duty_soft = 0;
 float motor_left_dir = -1.0;
 float motor_right_dir = 1.0;
 
+// Wheel direction
+float wheel_dir_left = 1.0;
+float wheel_dir_right = -1.0;
+
 // Sampling
 int num_sample = 10;
 
@@ -181,9 +185,9 @@ int main(int argc, char **argv)
 	// Motor properties
 	while(1){
 		yes_or_no = 'n';
-		cout << "Please enter left motor direction (1 or -1, float): ";
+		cout << "Please enter left motor direction (1 or -1, float, default = -1): ";
 		cin >> motor_left_dir;
-		cout << "Please enter right motor direction (1 or -1, float): ";
+		cout << "Please enter right motor direction (1 or -1, float, default = 1): ";
 		cin >> motor_right_dir;
 		cout << "Please enter soft portion for duty cycle ((0,0.3], float): ";
 		cin >> duty_soft;
@@ -274,20 +278,20 @@ int main(int argc, char **argv)
 		for (int i = 0; i < num_sample; ++i){
 			// 2.1.1 Get position
 			if(i == 0){
-				tick_left_0 = (-1)*rc_get_encoder_pos(Channel_Left); // Positive number
-				tick_right_0 = (1)*rc_get_encoder_pos(Channel_Right); // Positive number
+				tick_left_0 = wheel_dir_left*rc_get_encoder_pos(Channel_Left); // Positive number
+				tick_right_0 = wheel_dir_right*rc_get_encoder_pos(Channel_Right); // Positive number
 				tick_left_sum += tick_left_0; // Positive number
 				tick_right_sum += tick_right_0;} // Positive number
 			else{
-				tick_left_sum += (-1)*rc_get_encoder_pos(Channel_Left);
-				tick_right_sum += (1)*rc_get_encoder_pos(Channel_Right);}
+				tick_left_sum += wheel_dir_left*rc_get_encoder_pos(Channel_Left);
+				tick_right_sum += wheel_dir_right*rc_get_encoder_pos(Channel_Right);}
 			
 			// Reset encoder if necessary		
-			if(i == (num_sample-1) && (-1)*rc_get_encoder_pos(Channel_Left) > total_tick)
-				rc_set_encoder_pos(Channel_Left, (-1)*rc_get_encoder_pos(Channel_Left) - total_tick);
+			if(i == (num_sample-1) && wheel_dir_left*rc_get_encoder_pos(Channel_Left) > total_tick)
+				rc_set_encoder_pos(Channel_Left, wheel_dir_left*rc_get_encoder_pos(Channel_Left) - total_tick);
 				 //rc_set_encoder_pos(Channel_Left, rc_get_encoder_pos(Channel_Left) + total_tick); // negative offset
-			if(i == (num_sample-1) && (1)*rc_get_encoder_pos(Channel_Right) > total_tick)
-				rc_set_encoder_pos(Channel_Right, (1)*rc_get_encoder_pos(Channel_Right) - total_tick); // positive offset
+			if(i == (num_sample-1) && wheel_dir_right*rc_get_encoder_pos(Channel_Right) > total_tick)
+				rc_set_encoder_pos(Channel_Right, wheel_dir_right*rc_get_encoder_pos(Channel_Right) - total_tick); // positive offset
 		
 			ros::spinOnce();
 			r.sleep();
