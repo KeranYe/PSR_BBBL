@@ -74,6 +74,8 @@ int total_tick = (int)(gear_ratio * encoder_res);
 // Motor duty cycle
 float duty_left = 0;
 float duty_right = 0; 
+float duty_left_prior = 0;
+float duty_right_prior = 0;
 float duty_soft = 0;
 
 // Motor direction
@@ -204,14 +206,14 @@ int main(int argc, char **argv)
 		cout << "motor_left_dir = " << motor_left_dir << endl;
 		cout << "motor_right_dir = " << motor_right_dir << endl;
 		cout << "duty_soft = " << duty_soft << endl;
-		cout << "num_sample = " << num_sample << "?(y/n)";
+		cout << "num_sample (default = 25) = " << num_sample << "?(y/n)";
 		cin >> yes_or_no;		
 		if(yes_or_no == 'y') break;
 	}
 
 	// 1.2 Temp states
-	float pos_array_left[num_sample] = {};
-	float pos_array_right[num_sample] = {};
+//	float pos_array_left[num_sample] = {};
+//	float pos_array_right[num_sample] = {};
 	
 	float error_left = 0;
 	float error_right = 0;
@@ -237,8 +239,8 @@ int main(int argc, char **argv)
 //	float vel_left_diff = 0;
 //	float vel_right_diff = 0;
 
-	float duty_left_prior = 0;
-	float duty_right_prior = 0;
+//	float duty_left_prior = 0;
+//	float duty_right_prior = 0;
 	
 	ros::init(argc, argv, "psr_drive");
 
