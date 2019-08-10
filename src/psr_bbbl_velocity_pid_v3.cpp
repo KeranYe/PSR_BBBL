@@ -42,6 +42,12 @@ float vel_right = 0;
 float accel_left = 0;
 float accel_right = 0;
 
+float pos_left_prior = 0; 
+float pos_right_prior = 0; 
+
+float vel_left_prior = 0; 
+float vel_right_prior = 0;
+
 // Desired states 
 float pos_left_des = 0; 
 float pos_right_des = 0; 
@@ -216,20 +222,20 @@ int main(int argc, char **argv)
 	float derivative_left = 0;
 	float derivative_right = 0;
 
-	float error_left_prior = 0;
-	float error_right_prior = 0;
+//	float error_left_prior = 0;
+//	float error_right_prior = 0;
 	
-	float pos_left_prior = 0;
-	float pos_right_prior = 0;
+//	float pos_left_prior = 0;
+//	float pos_right_prior = 0;
 
-	float vel_left_prior = 0;
-	float vel_right_prior = 0;
+//	float vel_left_prior = 0;
+//	float vel_right_prior = 0;
 
-	float pos_left_diff = 0;
-	float pos_right_diff = 0;
+//	float pos_left_diff = 0;
+//	float pos_right_diff = 0;
 
-	float vel_left_diff = 0;
-	float vel_right_diff = 0;
+//	float vel_left_diff = 0;
+//	float vel_right_diff = 0;
 
 	float duty_left_prior = 0;
 	float duty_right_prior = 0;
@@ -258,7 +264,7 @@ int main(int argc, char **argv)
 	ros::Rate r(500);  //500 hz
 	// Assume initial pos for encoder has been set by funtion rc_test_encoders
 	//int num_sample = 25; 
-	int middle_index = (num_sample-1)/2;
+	//int middle_index = (num_sample-1)/2;
 	while(ros::ok()){
 		// Check reset flag
 		if(reset){
@@ -280,13 +286,58 @@ int main(int argc, char **argv)
 		
 		// 2.1 Compute and store position in 25 samples
 		for (int i = 0; i < num_sample; ++i){
-			pos_array_left[i] = wheel_dir_left * (float)rc_get_encoder_pos(Channel_Left) * TWO_PI / (float)total_tick;
-			pos_array_right[i] = wheel_dir_right * (float)rc_get_encoder_pos(Channel_Right) * TWO_PI / (float)total_tick;
+			pos_left = wheel_dir_left * (float)rc_get_encoder_pos(Channel_Left) * TWO_PI / (float)total_tick;
+			pos_right = wheel_dir_right * (float)rc_get_encoder_pos(Channel_Right) * TWO_PI / (float)total_tick;
+			
+			vel_left = (pos_left - pos_left_prior)/0.002;
+			vel_right = (pos_right - pos_right_prior)/0.002;
+			
+			accel_left = (vel_left - vel_left_prior)/0.002;
+			accel_right = (vel_right - vel_right_prior)/0.002;
+			
+			error_left = vel_left_des - vel_left;
+			error_right = vel_right_des - vel_right;
+			
+			derivative_left = accel_left_des - accel_left;
+			derivative_right = accel_right_des - accel_right;
+			
+			integral_left = integral_left + error_left;
+			integral_right = integral_right + error_right;
+			
+			duty_left = motor_left_dir*PID_duty(error_left, integral_left, derivative_left);
+			duty_right = motor_right_dir*PID_duty(error_right, integral_right, derivative_right);
+
+			// Soft start
+			if((duty_left - duty_left_prior) > duty_soft)
+	  			duty_left = duty_left_prior + duty_soft;
+			else if((duty_left - duty_left_prior) < - duty_soft )
+	  			duty_left = duty_left_prior - duty_soft;
+		
+			if((duty_right - duty_right_prior) > duty_soft)
+	  			duty_right = duty_right_prior + duty_soft;
+			else if((duty_right - duty_right_prior) < - duty_soft )
+	  			duty_right = duty_right_prior - duty_soft;
+			
+			rc_set_motor(Channel_Left, duty_left);
+			rc_set_motor(Channel_Right, duty_right);
+
+			// Publish velocity
+			ROS_INFO("vel_left = %0.6f, vel_right = %0.6f", \
+			 vel_left * 360 / TWO_PI, vel_right * 360 / TWO_PI);
+			
+			pos_left_prior = pos_left;
+			pos_right_prior = pos_right;
+			
+			vel_left_prior = vel_left;
+			vel_right_prior = vel_right;
+			
+			duty_left_prior = duty_left;
+			duty_right_prior = duty_right;
 			
 			ros::spinOnce();
 			r.sleep();
 		}
-														     
+		/*										     
 		// 2.2 Compute velocity and acceleration for middle sample
 		// 1/4 and 3/4 point velocity
 		float vel_half_1_left = (pos_array_left[middle_index] - pos_array_left[0]) / ((float)middle_index * 0.002);
@@ -353,6 +404,7 @@ int main(int argc, char **argv)
 		duty_right_prior = duty_right;
 		
 		//rc_set_motor(Channel_Left, (-1)*(0.3));// Velocity Test
+		*/
 	}
 
   /**
