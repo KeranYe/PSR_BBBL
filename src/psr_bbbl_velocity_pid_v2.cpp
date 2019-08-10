@@ -304,7 +304,7 @@ int main(int argc, char **argv)
 			pos_array_left[i] = wheel_dir_left * (float)rc_get_encoder_pos(Channel_Left) * TWO_PI / (float)total_tick;
 			pos_array_right[i] = wheel_dir_right * (float)rc_get_encoder_pos(Channel_Right) * TWO_PI / (float)total_tick;
 			
-			ros::spinOnce();
+//			ros::spinOnce();
 			r.sleep();
 		}
 														     
