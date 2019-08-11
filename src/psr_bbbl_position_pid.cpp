@@ -216,11 +216,14 @@ int main(int argc, char **argv)
 	float duty_left_prior = 0;
 	float duty_right_prior = 0;
 	
+	// 1.3 Node parameter
+	unsigned int call_back_queue_len = 10;
+	
 	ros::init(argc, argv, "psr_drive");
 
 	ros::NodeHandle n;
 
-	ros::Subscriber sub = n.subscribe("/turtlebot_teleop/cmd_vel", 10, drive_Callback);
+	ros::Subscriber sub = n.subscribe("/PSR/motors", call_back_queue_len, drive_Callback);
 
 	if(rc_initialize()<0)
 	{
