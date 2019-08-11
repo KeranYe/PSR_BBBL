@@ -18,6 +18,7 @@ extern "C"
 #include "std_msgs/String.h"
 #include "geometry_msgs/Twist.h"
 #include "unistd.h"
+#include <psr_msgs/PSR_Drive.h>
 
 // Define Globle Variables
 // Define velocity
@@ -44,12 +45,14 @@ void chatterCallback(const std_msgs::String::ConstPtr& msg)
   ROS_INFO("I heard: [%s]", msg->data.c_str());
 }
 
-void drive_Callback(const geometry_msgs::Twist::ConstPtr& cmd_vel_twist)
+void drive_Callback(const psr_msgs::PSR_Drive::ConstPtr& psr_drive_msg)
 {
 
   // assign the commands if the array is of the correct length
-  LeftDuty = cmd_vel_twist->linear.x;
-  RightDuty  = cmd_vel_twist->angular.z;
+  LeftDuty = psr_drive_msg->duty_left_des
+  RightDuty = psr_drive_msg->duty_right_des
+  //LeftDuty = cmd_vel_twist->linear.x;
+  //RightDuty  = cmd_vel_twist->angular.z;
 
 //  time_last_good_ros_command_sec = ros::Time::now().toSec();
   ROS_INFO("Left Duty, Right Duty= %1.2f %1.2f %1.2f" , LeftDuty, RightDuty);
@@ -123,11 +126,12 @@ void ros_compatible_shutdown_signal_handler(int signo)
 
 int main(int argc, char **argv)
 {
+  unsigned int call_back_queue_len = 1;
   ros::init(argc, argv, "psr_drive");
 
   ros::NodeHandle n;
 
-  ros::Subscriber sub = n.subscribe("/turtlebot_teleop/cmd_vel", 1, drive_Callback);
+  ros::Subscriber sub = n.subscribe("/PSR/motors", call_back_queue_len, drive_Callback);
 
   if(rc_initialize()<0)
     {
