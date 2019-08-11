@@ -70,7 +70,7 @@ float motor_right_dir = 1.0;
 
 // Wheel direction
 float wheel_dir_left = 1.0;
-float wheel_dir_right = -1.0
+float wheel_dir_right = -1.0;
 
 // Sampling
 int num_sample = 10;
