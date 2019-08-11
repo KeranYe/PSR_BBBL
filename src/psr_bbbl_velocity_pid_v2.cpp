@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 		duty_right_prior = duty_right;
 		
 		ros::spinOnce();
-//		r.sleep();
+		r.sleep();
 		//rc_set_motor(Channel_Left, (-1)*(0.3));// Velocity Test
 	}
 
