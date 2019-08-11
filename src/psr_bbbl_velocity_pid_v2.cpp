@@ -275,6 +275,8 @@ int main(int argc, char **argv)
 
 	rc_enable_motors();
 	ros::Rate r(rate);  //500 hz
+//	ros::AsyncSpinner spinner(2); // Use 2 threads
+//	spinner.start();
 	// Assume initial pos for encoder has been set by funtion rc_test_encoders
 	//int num_sample = 25; 
 	int first_index = num_sample-1;
@@ -300,14 +302,16 @@ int main(int argc, char **argv)
 		rc_set_encoder_pos(Channel_Right,0);
 		
 		// 2.1 Compute and store position in 25 samples
+		double start_time = ros::WallTime::now().toSec();
 		for (int i = 0; i < (3*num_sample); ++i){
 			pos_array_left[i] = wheel_dir_left * (float)rc_get_encoder_pos(Channel_Left) * TWO_PI / (float)total_tick;
 			pos_array_right[i] = wheel_dir_right * (float)rc_get_encoder_pos(Channel_Right) * TWO_PI / (float)total_tick;
 			
 //			ros::spinOnce();
-			r.sleep();
+//			r.sleep();
 		}
-														     
+		double end_time = ros::WallTime::now().toSec();
+		float time_gap = (float)(end_time-start_time)/3.0;
 		// 2.2 Compute velocity and acceleration for middle sample
 		// get position for 3 samples
 		float pos_1_left = getPartialAverage(pos_array_left, 0, first_index);
@@ -317,15 +321,15 @@ int main(int argc, char **argv)
 		float pos_2_right = getPartialAverage(pos_array_right, num_sample, second_index);
 		float pos_3_right = getPartialAverage(pos_array_right, 2*num_sample, third_index);
 		// 1/4 and 3/4 point velocity
-		float vel_half_1_left = (pos_2_left - pos_1_left) / ((float)first_index * 0.002);
-		float vel_half_2_left = (pos_3_left - pos_2_left) / ((float)first_index * 0.002);												    
-		float vel_half_1_right = (pos_2_right - pos_1_right) / ((float)first_index * 0.002);
-		float vel_half_2_right = (pos_3_right - pos_2_right) / ((float)first_index * 0.002);												    
+		float vel_half_1_left = (pos_2_left - pos_1_left) / time_gap;
+		float vel_half_2_left = (pos_3_left - pos_2_left) / time_gap;												    
+		float vel_half_1_right = (pos_2_right - pos_1_right) / time_gap;
+		float vel_half_2_right = (pos_3_right - pos_2_right) / time_gap;												    
 		// middle point velocity and acceleration												     
 		vel_left = (vel_half_2_left + vel_half_1_left) / 2.0;
 		vel_right = (vel_half_2_right + vel_half_1_right) / 2.0;
-		accel_left = (vel_half_2_left - vel_half_1_left) / ((float)first_index * 0.002);
-		accel_right = (vel_half_2_right - vel_half_1_right) / ((float)first_index * 0.002);
+		accel_left = (vel_half_2_left - vel_half_1_left) / time_gap;
+		accel_right = (vel_half_2_right - vel_half_1_right) / time_gap;
 			
 		// Publish velocity
 		ROS_INFO("vel_left = %f, vel_right = %f", \
