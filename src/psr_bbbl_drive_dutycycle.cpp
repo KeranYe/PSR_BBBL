@@ -49,8 +49,8 @@ void drive_Callback(const psr_msgs::PSR_Drive::ConstPtr& psr_drive_msg)
 {
 
   // assign the commands if the array is of the correct length
-  LeftDuty = psr_drive_msg->duty_left_des
-  RightDuty = psr_drive_msg->duty_right_des
+  LeftDuty = psr_drive_msg->duty_left_des;
+  RightDuty = psr_drive_msg->duty_right_des;
   //LeftDuty = cmd_vel_twist->linear.x;
   //RightDuty  = cmd_vel_twist->angular.z;
 
